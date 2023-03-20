@@ -2,8 +2,12 @@
 
 namespace app\controllers;
 
+use app\forms\OrderFilterForm;
 use app\models\Order;
 use app\models\OrderSearch;
+use Yii;
+use yii\base\InvalidConfigException;
+use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
@@ -16,13 +20,23 @@ class OrderController extends Controller
     /**
      * @inheritDoc
      */
-    public function behaviors()
+    public function behaviors(): array
     {
         return array_merge(
             parent::behaviors(),
             [
+                'access' => [
+                    'class' => AccessControl::class,
+                    'rules' => [
+                        [
+                            'actions' => ['index', 'view', 'create', 'update', 'delete'],
+                            'allow' => true,
+                            'roles' => ['@'],
+                        ],
+                    ],
+                ],
                 'verbs' => [
-                    'class' => VerbFilter::className(),
+                    'class' => VerbFilter::class,
                     'actions' => [
                         'delete' => ['POST'],
                     ],
@@ -30,30 +44,42 @@ class OrderController extends Controller
             ]
         );
     }
-
+    
     /**
      * Lists all Order models.
      *
      * @return string
+     * @throws InvalidConfigException
      */
-    public function actionIndex()
+    public function actionIndex(): string
     {
-        $searchModel = new OrderSearch();
-        $dataProvider = $searchModel->search($this->request->queryParams);
-
+        $request = $this->request->get();
+        $form = new OrderFilterForm();
+        
+        if ($form->load($request) && $form->validate()) {
+            $dataProvider = $form->getDataProvider();
+        } else {
+            $searchModel = new OrderSearch();
+            $dataProvider = $searchModel->search($this->request->queryParams);
+        }
+    
+        if ($form->hasErrors()) {
+            Yii::$app->session->setFlash('error', $form->getFirstErrors());
+        }
+        
         return $this->render('index', [
-            'searchModel' => $searchModel,
+            'filterForm' => $form,
             'dataProvider' => $dataProvider,
         ]);
     }
-
+    
     /**
      * Displays a single Order model.
      * @param int $id ID
      * @return string
      * @throws NotFoundHttpException if the model cannot be found
      */
-    public function actionView($id)
+    public function actionView($id): string
     {
         return $this->render('view', [
             'model' => $this->findModel($id),
