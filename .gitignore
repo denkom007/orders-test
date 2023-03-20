@@ -7,3 +7,5 @@ db.sql
 /yii_test.bat
 
 /vendor/
+
+composer.lock
